@@ -1,25 +1,37 @@
-// import { connectDB } from "@/dbconfig/dbConfig";
 import { NextRequest, NextResponse } from "next/server";
-import mongoose from 'mongoose';
+import connectMongo from '@/lib/mongoose';
 import { usermodel } from '@/app/models/usermodel';
+
 export async function GET() {
-  let data=[]
   try {
-    await mongoose.connect(process.env.MONGO_URL!)
-    data=await usermodel.find()
+    await connectMongo();
+    const data = await usermodel.find();
+    return NextResponse.json({ result: data });
   } catch (error) {
-    console.log(error)
+    console.error("Error fetching data:", error);
+    return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 });
   }
-  return NextResponse.json({result:data})
 }
-export async function POST(request:NextRequest) {
-  const payload=await request.json()
-  await mongoose.connect(process.env.MONGO_URL!)
-  let task=new usermodel(payload)
-  const result=await task.save()
-  return NextResponse.json({result})
+
+export async function POST(request: NextRequest) {
+  try {
+    await connectMongo();
+    const payload = await request.json();
+    const user = new usermodel(payload);
+    const result = await user.save();
+    return NextResponse.json({result}, { status: 201 });
+    
+  } catch (error:any) {
+    console.error("Error saving data:", error);
+    if (error.code === 11000) {
+      return NextResponse.json({ error: 'Email already exists' }, { status: 409 });
+    }
+
+    return NextResponse.json({ error: 'Failed to save data' }, { status: 500 });
+  }
 }
-  
+
+
 // export async function POST(request: NextRequest) {
 //   try {
 //     if (mongoose.connection.readyState === 0) {
